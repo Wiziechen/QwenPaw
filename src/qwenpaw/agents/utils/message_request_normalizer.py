@@ -213,13 +213,16 @@ def _strip_media_blocks_in_place(
     *,
     audio_only: bool = False,
     document_only: bool = False,
+    tool_result_only: bool = False,
 ) -> int:
     """Strip media blocks from copied messages only.
 
     Handles both 1.x dict blocks and 2.0 Pydantic block objects. When
     ``audio_only`` is true, image, video, and file blocks are preserved.
     When ``document_only`` is true, only PDF document blocks are removed
-    (image/audio/video blocks are preserved).
+    (image/audio/video blocks are preserved). With ``tool_result_only``,
+    stripping applies only to blocks nested inside tool results, so
+    user-supplied document blocks keep their upstream formatting path.
     """
     total_stripped = 0
     if document_only:
@@ -236,7 +239,7 @@ def _strip_media_blocks_in_place(
         new_content = []
         stripped_this_message = 0
         for block in msg.content:
-            if should_strip(block):
+            if should_strip(block) and not tool_result_only:
                 total_stripped += 1
                 stripped_this_message += 1
                 continue
@@ -353,15 +356,21 @@ def normalize_messages_for_model_request(
     elif strip_audio:
         _strip_media_blocks_in_place(normalized, audio_only=True)
     elif target_family == "openai":
-        # OpenAI-compatible Chat Completions servers do not support ``file``
-        # content parts (that shape exists only in the Responses API). PDF
-        # document blocks persisted from tool results would otherwise be
-        # serialized as ``{"type": "file"}`` and rejected with 400 even by
-        # multimodal servers, so strip documents for the OpenAI chat family
-        # regardless of multimodal support. Images/audio/video are preserved:
-        # ``image_url`` / ``input_audio`` parts are accepted by these
-        # endpoints.
-        _strip_media_blocks_in_place(normalized, document_only=True)
+        # OpenAI-compatible Chat Completions servers (vLLM, DeepSeek,
+        # DashScope, ...) reject ``file`` content parts (that shape exists
+        # only in the Responses API). PDF documents returned by tools would
+        # otherwise be serialized as ``{"type": "file"}`` and rejected with
+        # 400 even by multimodal servers, so strip tool-result document
+        # blocks for the OpenAI chat family regardless of multimodal
+        # support. User-supplied documents keep the upstream formatting
+        # path (formatters emit ``file`` parts from them). Images, audio
+        # and video are preserved: ``image_url`` / ``input_audio`` parts
+        # are accepted by these endpoints.
+        _strip_media_blocks_in_place(
+            normalized,
+            document_only=True,
+            tool_result_only=True,
+        )
     return normalized
 
 
