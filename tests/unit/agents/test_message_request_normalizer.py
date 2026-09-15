@@ -300,7 +300,11 @@ def test_normalize_without_multimodal_support_strips_pdf():
     assert normalized[0].content[0].text == MEDIA_UNSUPPORTED_PLACEHOLDER
 
 
-def test_normalize_strips_user_pdf_for_openai_multimodal_model():
+def test_normalize_keeps_user_pdf_for_openai_multimodal_model():
+    # User-supplied documents keep the upstream formatting path: the
+    # formatter serializes them as ``file`` parts, which first-party
+    # OpenAI chat-completions endpoints accept. Only tool-returned
+    # documents are stripped (see the next test).
     msg = Msg(
         name="user",
         role="user",
@@ -313,11 +317,12 @@ def test_normalize_strips_user_pdf_for_openai_multimodal_model():
     )
 
     assert len(normalized[0].content) == 1
-    assert normalized[0].content[0].type == "text"
-    assert normalized[0].content[0].text == MEDIA_UNSUPPORTED_PLACEHOLDER
+    assert _is_data_block(normalized[0].content[0])
 
 
 def test_normalize_strips_tool_pdf_for_openai_multimodal_model():
+    """Tool-returned PDFs are stripped for the OpenAI chat-completions
+    family regardless of multimodal support (Fixes #7597)."""
     msg = Msg(
         name="assistant",
         role="assistant",
