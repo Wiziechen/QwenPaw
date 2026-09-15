@@ -53,9 +53,7 @@ def _clean_provider_specific_fields(
     * ``raw_input`` – AgentScope stream-parsing artefact.
       Stripped unconditionally; some providers reject unknown fields.
     """
-    preserve = (
-        _GEMINI_NATIVE_FIELDS if target_family == "gemini" else frozenset()
-    )
+    preserve = _GEMINI_NATIVE_FIELDS if target_family == "gemini" else frozenset()
     strip_fields = _PROVIDER_ONLY_TOOL_USE_FIELDS - preserve
 
     if not strip_fields:
@@ -125,9 +123,7 @@ def _clone_messages(msgs: list[Msg]) -> list[Msg]:
 def _is_media_block(block: Any) -> bool:
     """Check if a block carries media or a supported document payload."""
     btype = (
-        block.get("type")
-        if isinstance(block, dict)
-        else getattr(block, "type", None)
+        block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
     )
     if btype in _MEDIA_BLOCK_TYPES:
         return True
@@ -143,9 +139,7 @@ def _is_media_block(block: Any) -> bool:
             if isinstance(source, dict)
             else getattr(source, "media_type", "")
         ) or ""
-        return (
-            mt.startswith(_MEDIA_MIME_PREFIXES) or mt in _DOCUMENT_MIME_TYPES
-        )
+        return mt.startswith(_MEDIA_MIME_PREFIXES) or mt in _DOCUMENT_MIME_TYPES
     return False
 
 
@@ -158,9 +152,7 @@ def _is_audio_block(block: Any) -> bool:
         if block_type == "data":
             source = block.get("source")
             media_type = (
-                source.get("media_type", "")
-                if isinstance(source, dict)
-                else ""
+                source.get("media_type", "") if isinstance(source, dict) else ""
             )
             return media_type.startswith("audio/")
         return False
@@ -175,18 +167,57 @@ def _is_audio_block(block: Any) -> bool:
     return False
 
 
+def _is_document_block(block: Any) -> bool:
+    """Check if a block carries a PDF document payload.
+
+    ``application/pdf`` is rendered as an OpenAI ``file`` content part (or
+    ``input_file`` on the Responses API). OpenAI-compatible Chat Completions
+    servers (vLLM, DeepSeek, DashScope, ...) reject ``file`` parts, so
+    document blocks must be stripped at request time irrespective of the
+    model's multimodal support.
+    """
+    if isinstance(block, dict):
+        block_type = block.get("type")
+        if block_type == "file":
+            return True
+        if block_type == "data":
+            source = block.get("source")
+            media_type = (
+                source.get("media_type", "") if isinstance(source, dict) else ""
+            )
+            return media_type == "application/pdf"
+        return False
+
+    block_type = getattr(block, "type", None)
+    if block_type == "file":
+        return True
+    if block_type == "data":
+        source = getattr(block, "source", None)
+        media_type = getattr(source, "media_type", "") or ""
+        return media_type == "application/pdf"
+    return False
+
+
 def _strip_media_blocks_in_place(
     msgs: list[Msg],
     *,
     audio_only: bool = False,
+    document_only: bool = False,
 ) -> int:
     """Strip media blocks from copied messages only.
 
     Handles both 1.x dict blocks and 2.0 Pydantic block objects. When
     ``audio_only`` is true, image, video, and file blocks are preserved.
+    When ``document_only`` is true, only PDF document blocks are removed
+    (image/audio/video blocks are preserved).
     """
     total_stripped = 0
-    should_strip = _is_audio_block if audio_only else _is_media_block
+    if document_only:
+        should_strip = _is_document_block
+    elif audio_only:
+        should_strip = _is_audio_block
+    else:
+        should_strip = _is_media_block
 
     for msg in msgs:
         if not isinstance(msg.content, list):
@@ -268,12 +299,8 @@ def _collapse_consecutive_user_messages(msgs: list[Msg]) -> list[Msg]:
     for msg in msgs:
         if collapsed and msg.role == "user" and collapsed[-1].role == "user":
             prev = collapsed[-1]
-            prev_content = (
-                list(prev.content) if isinstance(prev.content, list) else []
-            )
-            this_content = (
-                list(msg.content) if isinstance(msg.content, list) else []
-            )
+            prev_content = list(prev.content) if isinstance(prev.content, list) else []
+            this_content = list(msg.content) if isinstance(msg.content, list) else []
             prev.content = prev_content + this_content
         else:
             collapsed.append(msg)
@@ -311,6 +338,16 @@ def normalize_messages_for_model_request(
         _strip_media_blocks_in_place(normalized)
     elif strip_audio:
         _strip_media_blocks_in_place(normalized, audio_only=True)
+    elif target_family == "openai":
+        # OpenAI-compatible Chat Completions servers do not support ``file``
+        # content parts (that shape exists only in the Responses API). PDF
+        # document blocks persisted from tool results would otherwise be
+        # serialized as ``{"type": "file"}`` and rejected with 400 even by
+        # multimodal servers, so strip documents for the OpenAI chat family
+        # regardless of multimodal support. Images/audio/video are preserved:
+        # ``image_url`` / ``input_audio`` parts are accepted by these
+        # endpoints.
+        _strip_media_blocks_in_place(normalized, document_only=True)
     return normalized
 
 
