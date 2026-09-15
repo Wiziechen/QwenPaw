@@ -53,7 +53,9 @@ def _clean_provider_specific_fields(
     * ``raw_input`` – AgentScope stream-parsing artefact.
       Stripped unconditionally; some providers reject unknown fields.
     """
-    preserve = _GEMINI_NATIVE_FIELDS if target_family == "gemini" else frozenset()
+    preserve = (
+        _GEMINI_NATIVE_FIELDS if target_family == "gemini" else frozenset()
+    )
     strip_fields = _PROVIDER_ONLY_TOOL_USE_FIELDS - preserve
 
     if not strip_fields:
@@ -123,7 +125,9 @@ def _clone_messages(msgs: list[Msg]) -> list[Msg]:
 def _is_media_block(block: Any) -> bool:
     """Check if a block carries media or a supported document payload."""
     btype = (
-        block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
+        block.get("type")
+        if isinstance(block, dict)
+        else getattr(block, "type", None)
     )
     if btype in _MEDIA_BLOCK_TYPES:
         return True
@@ -139,7 +143,9 @@ def _is_media_block(block: Any) -> bool:
             if isinstance(source, dict)
             else getattr(source, "media_type", "")
         ) or ""
-        return mt.startswith(_MEDIA_MIME_PREFIXES) or mt in _DOCUMENT_MIME_TYPES
+        return (
+            mt.startswith(_MEDIA_MIME_PREFIXES) or mt in _DOCUMENT_MIME_TYPES
+        )
     return False
 
 
@@ -152,7 +158,9 @@ def _is_audio_block(block: Any) -> bool:
         if block_type == "data":
             source = block.get("source")
             media_type = (
-                source.get("media_type", "") if isinstance(source, dict) else ""
+                source.get("media_type", "")
+                if isinstance(source, dict)
+                else ""
             )
             return media_type.startswith("audio/")
         return False
@@ -183,7 +191,9 @@ def _is_document_block(block: Any) -> bool:
         if block_type == "data":
             source = block.get("source")
             media_type = (
-                source.get("media_type", "") if isinstance(source, dict) else ""
+                source.get("media_type", "")
+                if isinstance(source, dict)
+                else ""
             )
             return media_type == "application/pdf"
         return False
@@ -299,8 +309,12 @@ def _collapse_consecutive_user_messages(msgs: list[Msg]) -> list[Msg]:
     for msg in msgs:
         if collapsed and msg.role == "user" and collapsed[-1].role == "user":
             prev = collapsed[-1]
-            prev_content = list(prev.content) if isinstance(prev.content, list) else []
-            this_content = list(msg.content) if isinstance(msg.content, list) else []
+            prev_content = (
+                list(prev.content) if isinstance(prev.content, list) else []
+            )
+            this_content = (
+                list(msg.content) if isinstance(msg.content, list) else []
+            )
             prev.content = prev_content + this_content
         else:
             collapsed.append(msg)
