@@ -5,7 +5,7 @@ vi.mock("../request", () => ({
 }));
 
 import { request } from "../request";
-import { chatDisplayApi } from "./chatDisplay";
+import { chatDisplayApi, type ChatDisplayConfig } from "./chatDisplay";
 
 describe("chatDisplayApi", () => {
   beforeEach(() => {
@@ -24,7 +24,9 @@ describe("chatDisplayApi", () => {
   });
 
   it("updates the persisted chat display defaults", async () => {
-    const chatDisplay = { assistant_message_display_mode: "process-collapsed" };
+    const chatDisplay: ChatDisplayConfig = {
+      assistant_message_display_mode: "process-collapsed",
+    };
     vi.mocked(request).mockResolvedValue(chatDisplay);
 
     await expect(chatDisplayApi.update(chatDisplay)).resolves.toEqual(
