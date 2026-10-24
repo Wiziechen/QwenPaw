@@ -78,9 +78,7 @@ import {
   subscribeUiFontSize,
   UI_FONT_SIZE_DEFAULT,
 } from "./utils/uiFontSizePreference";
-import {
-  setAssistantMessageDisplayServerDefault,
-} from "./utils/chatDisplayPreference";
+import { setAssistantMessageDisplayServerDefault } from "./utils/chatDisplayPreference";
 import type { ThemeConfig } from "./api/modules/theme";
 import "./styles/tokens.css";
 import "./styles/layout.css";
