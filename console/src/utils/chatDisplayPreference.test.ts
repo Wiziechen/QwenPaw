@@ -80,9 +80,9 @@ describe("chatDisplayPreference", () => {
     setAssistantMessageDisplayPreference("result-collapsed");
 
     expect(getAssistantMessageDisplayPreference()).toBe("result-collapsed");
-    expect(
-      localStorage.getItem("qwenpaw_assistant_message_display_mode"),
-    ).toBe("result-collapsed");
+    expect(localStorage.getItem("qwenpaw_assistant_message_display_mode")).toBe(
+      "result-collapsed",
+    );
   });
 
   it("ignores an invalid stored assistant display mode", () => {
