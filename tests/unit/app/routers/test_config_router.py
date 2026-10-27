@@ -855,7 +855,7 @@ def test_get_chat_display_returns_sparse_defaults(client):
 def test_get_chat_display_returns_stored_section(client):
     fake_cfg = MagicMock()
     fake_cfg.chat_display = ChatDisplayConfig(
-        assistant_message_display_mode="process-collapsed"
+        assistant_message_display_mode="process-collapsed",
     )
     read_config = AsyncMock(return_value=fake_cfg)
 
@@ -867,7 +867,7 @@ def test_get_chat_display_returns_stored_section(client):
 
     assert response.status_code == 200
     assert response.json() == {
-        "assistant_message_display_mode": "process-collapsed"
+        "assistant_message_display_mode": "process-collapsed",
     }
     read_config.assert_awaited_once_with(load_config)
 
@@ -887,7 +887,7 @@ def test_put_chat_display_persists_without_agent_reload(client):
 
     assert response.status_code == 200
     assert response.json() == {
-        "assistant_message_display_mode": "process-collapsed"
+        "assistant_message_display_mode": "process-collapsed",
     }
     assert calls == [fake_cfg]
     assert (
@@ -899,7 +899,7 @@ def test_put_chat_display_persists_without_agent_reload(client):
 def test_put_chat_display_empty_body_clears_section(client):
     fake_cfg = MagicMock()
     fake_cfg.chat_display = ChatDisplayConfig(
-        assistant_message_display_mode="process-collapsed"
+        assistant_message_display_mode="process-collapsed",
     )
     calls = []
 
@@ -933,7 +933,7 @@ def test_chat_display_config_accepts_known_modes():
 def test_delete_chat_display_clears_persisted_config(client):
     fake_cfg = MagicMock()
     fake_cfg.chat_display = ChatDisplayConfig(
-        assistant_message_display_mode="process-collapsed"
+        assistant_message_display_mode="process-collapsed",
     )
     calls = []
 
