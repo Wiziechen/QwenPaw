@@ -3397,7 +3397,7 @@ class ChatDisplayConfig(BaseModel):
         if value is not None and value not in allowed:
             raise ValueError(
                 "must be one of: expanded, process-collapsed, "
-                "result-collapsed"
+                "result-collapsed",
             )
         return value
 
